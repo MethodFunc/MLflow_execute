@@ -1,0 +1,29 @@
+version: 1
+
+formatters:
+  default:
+    format: '%(asctime)s [%(levelname)s] %(filename)s(%(lineno)s) %(message)s'
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: default
+    level: DEBUG
+    stream: ext://sys.stdout
+  file:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: default
+    level: DEBUG
+    filename: mlflow_log.log
+    when: midnight
+    backupCount: 7
+
+loggers:
+  default:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: false
+
+root:
+  level: DEBUG
+  handlers: [console, file]

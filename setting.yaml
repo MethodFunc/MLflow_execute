@@ -1,0 +1,49 @@
+#MLflow setting
+MLFLOW_TRACKING_URI: *
+ARTIFACT_URI: *
+
+data_path: *
+
+gpu_num: 0
+
+generator_plant: TEST
+output_type: 'hour'
+
+# Dataframe split Setting
+split_setting:
+  target_col: INFO_POWER_ACTIVE
+  train_ratio: 0.8
+  val_ratio: 0.1
+
+# Support minmax, standardize
+scale_type: minmax
+minmax_range:
+  min: 0
+  max: 1
+
+
+# Timeseries window function setting
+window_setting:
+  seq_len: 144
+  target_len: 1
+
+# Support tensorflow, keras, neural
+mlflow_type: keras
+
+# keras train setting
+train_setting:
+  optimizer: adam
+  learning_rate: 3e-4
+  loss: mse
+  epochs: 1
+  batch_size: 64
+
+# neural prophet setting(Hyperopt include)
+neural_setting:
+  eval: 1
+  n_forecast: 24
+  n_lags: 24
+
+# Test model name
+model:
+  name: Test_DB
