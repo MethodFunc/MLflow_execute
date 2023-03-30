@@ -5,6 +5,7 @@ from pathlib import Path
 
 import mlflow
 import mlflow.keras
+import numpy as np
 
 from bin.keras_tools.losses import get_loss_fn
 from bin.keras_tools.optimizers import get_optimizer_fn
@@ -18,20 +19,38 @@ from bin.neural.predict_tools import eval_predict
 from bin.neural.wrapper import NeuralProphetWrapper
 from user_modify import create_model
 from setting import load_logger
+from bin.metrics import get_genpower
 
 
 def insert_logs(name, y_true, y_pred):
+    total_eval, exclude_eval = [], []
+    power = get_genpower(name)
+
     for idx in range(len(y_pred)):
+        eval_value = evaluation_metric(name, y_true[idx], y_pred[idx])
+        
         mlflow.log_metrics({
             'actual': y_true[idx],
             'prediction': y_pred[idx],
-            'nmae': evaluation_metric(name, y_true[idx], y_pred[idx])
+            'nmae': eval_value
         }, idx)
+
+        total_eval.append(eval_value)
+
+        if y_true[idx] >= (power * 0.1):
+            exclude_eval.append(eval_value)
+
+    mlflow.log_metrics(
+        {
+            'mean_nmae': float(np.mean(total_eval)),
+            'exclue_mean_nmae': float(np.mean(exclude_eval))
+        }, 0
+    )
 
 
 def set_run_name(name, config, logger):
     run_name = datetime.now().strftime('%Y%m%d%H%M%S')
-
+    set_experiments(name, config['ARTIFACT_URI'], logger)
     return run_name
 
 
@@ -58,7 +77,6 @@ def keras_run(name, loader, logger, config):
 
     # 런 이름 (변경이 가능하지만 시간으로 지정)
     run_name = set_run_name(name, config, logger)
-    set_experiments(name, config['ARTIFACT_URI'], logger)
     logger = load_logger()
     with mlflow.start_run(run_name=run_name) as run:
         # 모델 인증에 필요함
@@ -83,9 +101,10 @@ def keras_run(name, loader, logger, config):
 
         insert_logs(name, y_true, y_pred)
 
-    logger.info('register models')
-    # 모델 인증 저장
-    model_register(model_name=name, artifact_uri=config['ARTIFACT_URI'], run_id=run_id)
+    if config['enable_register']:
+        logger.info('register models')
+        # 모델 인증 저장
+        model_register(model_name=name, artifact_uri=config['ARTIFACT_URI'], run_id=run_id)
 
 
 def neural_run(name, loader, logger, config):
@@ -97,7 +116,6 @@ def neural_run(name, loader, logger, config):
     best_params = hyperopt_fit(train_data, val_data, col_list, config)
 
     run_name = set_run_name(name, config, logger)
-    set_experiments(name, config['ARTIFACT_URI'], logger)
     with mlflow.start_run(run_name=run_name) as run:
         mlflow.log_params({
             'n_forecasts': config['neural_setting']['n_forecast'],
@@ -121,7 +139,7 @@ def neural_run(name, loader, logger, config):
             for key, value in dict_value.items():
                 mlflow.log_metric(key.lower(), value, idx)
 
-        y_true, y_pred = eval_predict(model, val_data)
+        y_true, y_pred = eval_predict(model, val_data, config)
 
         logger.info('mlflow log prediction')
         insert_logs(name, y_true, y_pred)
@@ -130,5 +148,6 @@ def neural_run(name, loader, logger, config):
                                 python_model=NeuralProphetWrapper(model),
                                 signature=signature)
 
-    logger.info('register models')
-    model_register(model_name=name, artifact_uri=config['ARTIFACT_URI'], run_id=run_id)
+    if config['enable_register']:
+        logger.info('register models')
+        model_register(model_name=name, artifact_uri=config['ARTIFACT_URI'], run_id=run_id)

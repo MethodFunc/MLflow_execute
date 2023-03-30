@@ -12,7 +12,7 @@ def get_file_list(path, generator_plant: Optional[str] = None):
                  if Path(os.path.join(path, f)).is_file()]
         file_.sort()
 
-        if generator_plant != 'None':
+        if generator_plant:
             file_ = [f for f in file_ if generator_plant in f]
 
     elif Path(path).is_file():

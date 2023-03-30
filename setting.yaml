@@ -6,8 +6,12 @@ data_path: *
 
 gpu_num: 0
 
+# False or Text
 generator_plant: TEST
 output_type: 'hour'
+
+# True or False
+enable_register: False
 
 # Dataframe split Setting
 split_setting:
@@ -18,7 +22,7 @@ split_setting:
 # Support minmax, standardize
 scale_type: minmax
 minmax_range:
-  min: 0
+  min: -1
   max: 1
 
 
@@ -32,8 +36,10 @@ mlflow_type: keras
 
 # keras train setting
 train_setting:
+  # support adam, sgd, rmsprop, adamax
   optimizer: adam
   learning_rate: 3e-4
+  # support mse, huber, mae
   loss: mse
   epochs: 1
   batch_size: 64
@@ -43,6 +49,7 @@ neural_setting:
   eval: 1
   n_forecast: 24
   n_lags: 24
+  freq: H
 
 # Test model name
 model:

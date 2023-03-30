@@ -4,24 +4,19 @@ import numpy as np
 import pandas as pd
 
 
-def eval_predict(model, ori_data):
+def eval_predict(model, ori_data, config):
     dataframe = ori_data.copy()
-    start_date = dataframe.loc[0]['ds']
-    end_date = dataframe.loc[len(dataframe) - 1]['ds']
-    if type(start_date) != 'Timestamp':
-        start_date = pd.to_datetime(start_date)
-        end_date = pd.to_datetime(end_date)
-
-    date_range = (end_date - start_date).days
-    dataframe.set_index('ds', inplace=True)
     y_pred = []
 
-    for i in range(date_range):
-        tmp_date = start_date + timedelta(days=i)
-        date_str = tmp_date.strftime('%Y-%m-%d')
-        daterange = pd.date_range(date_str, periods=48, freq='1H')
+    for i in range(0, len(ori_data)-config['neural_setting']['n_lags'], config['neural_setting']['n_forecast']):
+        tmp_date = dataframe.loc[i]['ds']
+        date_str = tmp_date.strftime('%Y-%m-%d %H:%M:%S')
+        daterange = pd.date_range(date_str, periods=config['neural_setting']['n_forecast'] +
+                                                    config['neural_setting']['n_lags'],
+                                  freq=config['neural_setting']['freq'])
+
         range_df = pd.DataFrame(daterange, columns=['ds'])
-        tmp_df = pd.merge(range_df, dataframe.loc[date_str], on='ds', how='outer')
+        tmp_df = pd.merge(range_df, dataframe.iloc[i:i+config['neural_setting']['n_lags']], on='ds', how='outer')
         # decompose False안하면 Pandas Warning 뜸
         prediction = model.predict(tmp_df, decompose=False)
         cols = [col for col in prediction.columns if 'yhat' in col]
@@ -30,10 +25,7 @@ def eval_predict(model, ori_data):
 
     y_pred = np.array(y_pred)
 
-    tmp_date = start_date + timedelta(days=1)
-    date_str = tmp_date.strftime('%Y-%m-%d')
-
-    y_true = dataframe.loc[date_str:]['y'].values
+    y_true = dataframe.iloc[config['neural_setting']['n_lags']:]['y'].values
     y_pred = y_pred.ravel()
 
     return y_true, y_pred
